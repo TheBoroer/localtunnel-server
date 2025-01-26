@@ -89,7 +89,7 @@ export default function (opt) {
             const info = await manager.newClient(reqId, ctx);
 
             const url =
-                schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
+                schema + '://' + info.id + '.' + (opt.domain || ctx.request.host);
             info.url = url;
 
             ctx.set('x-localtunnel-subdomain', info.id);
@@ -136,7 +136,7 @@ export default function (opt) {
         const info = await manager.newClient(reqId, ctx);
 
         const url =
-            schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
+            schema + '://' + info.id + '.' + (opt.domain || ctx.request.host);
         info.url = url;
 
         ctx.set('x-localtunnel-subdomain', info.id);
