@@ -1,5 +1,4 @@
 {
-    "author": "Roman Shtylman <shtylman@gmail.com>",
     "name": "localtunnel-server",
     "type": "module",
     "description": "expose localhost to the world",
@@ -9,6 +8,11 @@
         "type": "git",
         "url": "git://github.com/localtunnel/server.git"
     },
+    "author": "Roman Shtylman <shtylman@gmail.com>",
+    "contributors": [
+        "Roman Shtylman <shtylman@gmail.com>",
+        "Boro Vukovic <me@bo.ro>"
+    ],
     "dependencies": {
         "book": "1.3.3",
         "core-util-is": "1.0.3",
