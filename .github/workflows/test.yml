@@ -1,37 +1,37 @@
-name: Test
+name: Test Node Versions
 
 on:
-    push:
-    pull_request:
+  push:
+  pull_request:
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
-        strategy:
-            matrix:
-                node-version: [18, 20, 22, 24]
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22, 24]
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Setup Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: 'npm'
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-            - name: Install dependencies
-              run: npm ci
-              env:
-                  NODE_ENV: test
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NODE_ENV: test
 
-            - name: Run tests
-              run: npm test
-              env:
-                  NODE_ENV: test
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
 
-            - name: Server start test
-              run: timeout 10s npm start || true
-              env:
-                  NODE_ENV: test
+      - name: Server start test
+        run: timeout 10s npm start || true
+        env:
+          NODE_ENV: test
