@@ -25,9 +25,20 @@ export default function (opt) {
     const landingPage = opt.landing || 'https://localtunnel.github.io/www/';
 
     function GetClientIdFromHostname(hostname) {
-        // from pull request: https://github.com/localtunnel/server/pull/118
-        const hostnameAndPort = hostname.split(':');
-        return myTldjs.getSubdomain(hostnameAndPort[0]);
+        try {
+            // from pull request: https://github.com/localtunnel/server/pull/118
+            const hostnameAndPort = hostname.split(':');
+            return myTldjs.getSubdomain(hostnameAndPort[0]);
+        } catch (error) {
+            console.error(
+                'Error getting client id from hostname:',
+                hostname,
+                'error:',
+                error,
+            );
+
+            return null;
+        }
     }
 
     const manager = new ClientManager(opt);
