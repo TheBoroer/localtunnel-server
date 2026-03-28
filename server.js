@@ -122,6 +122,33 @@ export default function (opt) {
         };
     });
 
+    // Kill a tunnel by ID — protected by API_TOKEN env var
+    router.delete('/api/tunnels/:id', async (ctx) => {
+        const apiToken = process.env.API_TOKEN;
+        if (!apiToken) {
+            ctx.status = 503;
+            ctx.body = { error: 'API_TOKEN environment variable is not set' };
+            return;
+        }
+
+        const auth = ctx.get('Authorization');
+        if (auth !== `Bearer ${apiToken}`) {
+            ctx.status = 401;
+            ctx.body = { error: 'Invalid or missing Authorization header' };
+            return;
+        }
+
+        const clientId = ctx.params.id;
+        if (!manager.hasClient(clientId)) {
+            ctx.throw(404);
+            return;
+        }
+
+        manager.removeClient(clientId);
+        debug('tunnel killed via API: %s', clientId);
+        ctx.body = { killed: true, id: clientId };
+    });
+
     app.use(router.routes());
     app.use(router.allowedMethods());
 
