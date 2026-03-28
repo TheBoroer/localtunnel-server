@@ -122,4 +122,68 @@ describe('Server', () => {
 
         await new Promise((resolve) => server.close(resolve));
     });
+
+    it('POST /api/tunnels/active should return only active tunnel IDs', async () => {
+        const server = createServer();
+        await new Promise((resolve) => server.listen(resolve));
+
+        // create two tunnels
+        await request(server).get('/active-test-one');
+        await request(server).get('/active-test-two');
+
+        // ask which of these are active (include a fake one)
+        const res = await request(server)
+            .post('/api/tunnels/active')
+            .send(['active-test-one', 'active-test-two', 'does-not-exist']);
+
+        assert.equal(res.statusCode, 200);
+        assert.ok(Array.isArray(res.body));
+        assert.ok(res.body.includes('active-test-one'));
+        assert.ok(res.body.includes('active-test-two'));
+        assert.ok(!res.body.includes('does-not-exist'));
+
+        await new Promise((resolve) => server.close(resolve));
+    });
+
+    it('POST /api/tunnels/active should return empty array when none match', async () => {
+        const server = createServer();
+        await new Promise((resolve) => server.listen(resolve));
+
+        const res = await request(server)
+            .post('/api/tunnels/active')
+            .send(['no-such-tunnel']);
+
+        assert.equal(res.statusCode, 200);
+        assert.deepEqual(res.body, []);
+
+        await new Promise((resolve) => server.close(resolve));
+    });
+
+    it('POST /api/tunnels/active should reject non-array body', async () => {
+        const server = createServer();
+        await new Promise((resolve) => server.listen(resolve));
+
+        const res = await request(server)
+            .post('/api/tunnels/active')
+            .send({ not: 'an array' });
+
+        assert.equal(res.statusCode, 400);
+        assert.equal(res.body.error, 'Expected JSON array of tunnel IDs');
+
+        await new Promise((resolve) => server.close(resolve));
+    });
+
+    it('POST /api/tunnels/active should reject invalid JSON', async () => {
+        const server = createServer();
+        await new Promise((resolve) => server.listen(resolve));
+
+        const res = await request(server)
+            .post('/api/tunnels/active')
+            .set('Content-Type', 'application/json')
+            .send('not json at all');
+
+        assert.equal(res.statusCode, 400);
+
+        await new Promise((resolve) => server.close(resolve));
+    });
 });

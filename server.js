@@ -120,6 +120,29 @@ export default function (opt) {
         ctx.body = gatherStats(manager);
     });
 
+    router.post('/api/tunnels/active', async (ctx) => {
+        const raw = await new Promise((resolve, reject) => {
+            let data = '';
+            ctx.req.on('data', (chunk) => { data += chunk; });
+            ctx.req.on('end', () => resolve(data));
+            ctx.req.on('error', reject);
+        });
+        let ids;
+        try {
+            ids = JSON.parse(raw);
+        } catch (_) {
+            ctx.status = 400;
+            ctx.body = { error: 'Invalid JSON' };
+            return;
+        }
+        if (!Array.isArray(ids)) {
+            ctx.status = 400;
+            ctx.body = { error: 'Expected JSON array of tunnel IDs' };
+            return;
+        }
+        ctx.body = ids.filter((id) => manager.clients.has(id));
+    });
+
     router.get('/api/tunnels/:id/status', async (ctx, next) => {
         const clientId = ctx.params.id;
         const client = manager.getClient(clientId);
