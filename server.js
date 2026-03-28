@@ -38,8 +38,20 @@ const upstreamAllowlist = (() => {
     }).filter(Boolean);
 })();
 
+// Paths that bypass the upstream allowlist (e.g. for health checks from load balancers)
+// Example: UPSTREAM_ALLOWLIST_BYPASS=/healthcheck,/api/status
+const upstreamBypassPaths = (() => {
+    const raw = process.env.UPSTREAM_ALLOWLIST_BYPASS;
+    if (!raw || !raw.trim()) return [];
+    return raw.split(',').map((s) => s.trim()).filter(Boolean);
+})();
+
 function isUpstreamAllowed(req) {
     if (!upstreamAllowlist) return true;
+    if (upstreamBypassPaths.length > 0) {
+        const url = req.url.split('?')[0];
+        if (upstreamBypassPaths.includes(url)) return true;
+    }
     const raw = req.socket.remoteAddress;
     if (!raw) return false;
     try {
