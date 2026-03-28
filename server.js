@@ -3,6 +3,7 @@ import Koa from 'koa';
 import tldjs from 'tldjs';
 import Debug from 'debug';
 import http from 'http';
+import ipaddr from 'ipaddr.js';
 import { hri } from 'human-readable-ids';
 import { humanId } from 'human-id';
 import Router from 'koa-router';
@@ -11,6 +12,50 @@ import ClientManager from './lib/ClientManager.js';
 import { startDiagnostics, gatherStats } from './lib/diagnostics.js';
 
 const debug = Debug('localtunnel:server');
+
+// Upstream IP allowlist — if UPSTREAM_ALLOWLIST is set, only these IPs/CIDRs
+// can connect. If unset or empty, all IPs are allowed.
+// Example — allow all private/LAN ranges + localhost:
+//   UPSTREAM_ALLOWLIST=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,::1
+const upstreamAllowlist = (() => {
+    const raw = process.env.UPSTREAM_ALLOWLIST;
+    if (!raw || !raw.trim()) return null;
+    const entries = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    return entries.map((entry) => {
+        try {
+            return ipaddr.parseCIDR(entry);
+        } catch (_) {
+            try {
+                // Bare IP — convert to /32 or /128
+                const addr = ipaddr.parse(entry);
+                const bits = addr.kind() === 'ipv4' ? 32 : 128;
+                return ipaddr.parseCIDR(`${entry}/${bits}`);
+            } catch (_) {
+                console.warn(`UPSTREAM_ALLOWLIST: skipping unparseable entry "${entry}"`);
+                return null;
+            }
+        }
+    }).filter(Boolean);
+})();
+
+function isUpstreamAllowed(req) {
+    if (!upstreamAllowlist) return true;
+    const raw = req.socket.remoteAddress;
+    if (!raw) return false;
+    try {
+        const addr = ipaddr.process(raw);
+        return upstreamAllowlist.some((cidr) => {
+            try {
+                return addr.match(cidr);
+            } catch (_) {
+                // v4/v6 mismatch — skip
+                return false;
+            }
+        });
+    } catch (_) {
+        return false;
+    }
+}
 
 const getEndpointIps = (request) => {
     // request.headers['x-forwarded-for'] could be a comma separated list of IPs (if client is behind proxies)
@@ -169,6 +214,12 @@ export default function (opt) {
     const appCallback = app.callback();
 
     server.on('request', (req, res) => {
+        if (!isUpstreamAllowed(req)) {
+            res.statusCode = 403;
+            res.end();
+            return;
+        }
+
         // without a hostname, we won't know who the request is for
         const hostname = req.headers.host;
         if (!hostname) {
@@ -197,6 +248,11 @@ export default function (opt) {
     });
 
     server.on('upgrade', (req, socket, head) => {
+        if (!isUpstreamAllowed(req)) {
+            socket.destroy();
+            return;
+        }
+
         const hostname = req.headers.host;
         if (!hostname) {
             socket.destroy();
